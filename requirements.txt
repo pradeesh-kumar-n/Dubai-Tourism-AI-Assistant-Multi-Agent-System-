@@ -1,1 +1,3 @@
 langgraph
+scikit-learn
+pytest

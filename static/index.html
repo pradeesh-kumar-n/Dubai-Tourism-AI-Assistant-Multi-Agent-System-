@@ -13,12 +13,12 @@
             min-height: 100vh;
         }
         .card {
-            background: white;
+            background: rgb(52, 4, 4);
             border-radius: 16px;
             padding: 40px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-        h1 { color: #333; margin-bottom: 8px; }
+        h1 { color: #333333; margin-bottom: 8px; }
         .subtitle { color: #666; margin-bottom: 30px; }
         input { 
             width: 100%; 
@@ -84,7 +84,7 @@
             responseDiv.innerHTML = '<span class=\"thinking\">🧠 Thinking...</span>';
             
             try {
-                const res = await fetch('/chat', {
+                const res = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ query: query })

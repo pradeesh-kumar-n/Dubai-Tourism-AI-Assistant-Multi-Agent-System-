@@ -159,7 +159,7 @@ def classify_query(query: str) -> str:
 
 
 def retrieve_documents(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
-    query_text = Vectorizer = VECTORIZER.transform([query])
+    query_text = VECTORIZER.transform([query])
     similarities = cosine_similarity(query_text, INDEX_MATRIX).ravel()
     ranked_indices = similarities.argsort()[-top_k:][::-1]
     ranked_docs = [DOCS[index] for index in ranked_indices if similarities[index] > 0]

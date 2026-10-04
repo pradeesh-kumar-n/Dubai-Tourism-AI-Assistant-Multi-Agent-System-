@@ -2,13 +2,9 @@ import json
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
-from tourism_graph import build_tourism_graph, evaluate_system
+from tourism_graph import build_tourism_graph, evaluate_system, TourismState
 
 app = FastAPI(title="Dubai Tourism AI Assistant")
-
-
-# Health check moved to /health to avoid conflict
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 graph = build_tourism_graph()
 
@@ -34,7 +30,15 @@ def chat(request: ChatRequest):
     Main chat endpoint.
     Send JSON body: {"query": "What are the best attractions in Dubai?"}
     """
-    result = graph.invoke({"user_query": request.query})
+    # Provide initial state matching TourismState
+    initial_state = {
+        "user_query": request.query,
+        "intent": "",
+        "documents": [],
+        "response": ""
+    }
+    # Type ignore for Pylance
+    result = graph.invoke(initial_state)  # type: ignore
     return ChatResponse(
         intent=result.get("intent", "unknown"),
         response=result.get("response", "Sorry, I don't have information about that.")
@@ -55,7 +59,14 @@ def main():
     ]
     for query in test_queries:
         print(f"\nUser: {query}")
-        result = graph.invoke({"user_query": query})
+        # Provide initial state matching TourismState
+        initial_state: TourismState = {
+            "user_query": query,
+            "intent": "",
+            "documents": [],
+            "response": ""
+        }
+        result = graph.invoke(initial_state)
         print(f"Intent: {result['intent']}")
         print(f"Assistant: {result['response']}")
     print("\nEvaluation metrics:")
@@ -63,3 +74,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Mount static files after defining API routes
+app.mount("/", StaticFiles(directory="static", html=True), name="static")

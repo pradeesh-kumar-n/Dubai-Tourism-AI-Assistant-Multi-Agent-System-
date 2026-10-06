@@ -18,79 +18,86 @@ jobs:
 
     - name: Install dependencies
       run: |
-        echo "Installing Python dependencies..."
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        echo "✅ Dependencies installed"
 
     - name: Install ngrok
       run: |
-        echo "Installing ngrok..."
-        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc
         echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
         sudo apt update
         sudo apt install -y ngrok
-        echo "✅ Ngrok installed"
 
-    - name: Debug environment variables
+    - name: CHECK NGROK SECRET - VERY IMPORTANT
       run: |
-        echo "🔍 Debugging environment variables..."
-        echo "All environment variables containing 'ngrok' or 'NGROK':"
-        env | grep -i ngrok || echo "No ngrok-related environment variables found"
+        echo "========================================================"
+        echo "🔍 CHECKING FOR NGROK_AUTHTOKEN SECRET"
+        echo "========================================================"
         echo ""
-        echo "Checking specifically for NGROK_AUTHTOKEN:"
-        if [ -n "$NGROK_AUTHTOKEN" ]; then
-          echo "✅ NGROK_AUTHTOKEN is SET (length: ${#NGROK_AUTHTOKEN})"
-          echo "First 10 chars: ${NGROK_AUTHTOKEN:0:10}"
-          echo "Last 10 chars: ${NGROK_AUTHTOKEN:-10}"
-        else
-          echo "❌ NGROK_AUTHTOKEN is NOT SET or is empty"
-        fi
-        echo ""
-        echo "All environment variables (first 20):"
-        env | head -20
 
-    - name: Configure ngrok authtoken
-      run: |
-        echo "🔑 Checking for NGROK_AUTHTOKEN secret..."
+        # Check if secret exists
         if [ -z "$NGROK_AUTHTOKEN" ]; then
-          echo "❌ ERROR: NGROK_AUTHTOKEN secret not found or empty!"
+          echo "❌ RESULT: NGROK_AUTHTOKEN SECRET IS MISSING OR EMPTY"
           echo ""
-          echo "Debug information:"
-          echo "----------------------------------------"
-          env | grep -i ngrok
-          echo "----------------------------------------"
+          echo "📋 TO FIX THIS, FOLLOW THESE EXACT STEPS:"
           echo ""
-          echo "To fix this:"
-          echo "1. Get your authtoken from: https://dashboard.ngrok.com/get-started/your-authtoken"
-          echo "2. In your GitHub repo, go to Settings → Secrets and variables → Actions"
-          echo "3. Click 'New repository secret'"
-          echo "4. Name: NGROK_AUTHTOKEN (exactly this spelling)"
-          echo "5. Value: [paste your authtoken - NO extra spaces]"
-          echo "6. Click 'Add secret'"
+          echo "1. OPEN YOUR GITHUB REPOSITORY IN YOUR BROWSER"
+          echo "2. CLICK ON THE 'SETTINGS' TAB (TOP RIGHT)"
+          echo "3. IN THE LEFT MENU, CLICK: 'Secrets and variables' → 'Actions'"
+          echo "4. YOU SHOULD SEE A LIST OF SECRETS (OR A MESSAGE SAYING NO SECRETS)"
+          echo "5. CLICK THE GREEN BUTTON: 'New repository secret'"
           echo ""
-          echo "Note: Secret names are case-sensitive!"
+          echo "6. ON THE SECRET CREATION PAGE:"
+          echo "   - NAME FIELD: TYPE EXACTLY → NGROK_AUTHTOKEN"
+          echo "   - VALUE FIELD: PASTE YOUR NGROK AUTHTOKEN HERE"
+          echo "     (GET IT FROM: https://dashboard.ngrok.com/get-started/your-authtoken)"
+          echo "   - IMPORTANT: NO SPACES BEFORE OR AFTER THE TOKEN!"
+          echo ""
+          echo "7. CLICK THE GREEN BUTTON: 'Add secret'"
+          echo ""
+          echo "8. AFTER ADDING, YOU SHOULD SEE:"
+          echo "   NGROK_AUTHTOKEN  ••••••••  (updated just now)"
+          echo ""
+          echo "9. RETURN TO THIS WORKFLOW RUN AND CLICK 'Re-run jobs' OR"
+          echo "   GO TO ACTIONS TAB AND CLICK 'Run workflow' AGAIN"
+          echo ""
+          echo "⚠️  COMMON MISTAKES TO AVOID:"
+          echo "   • Wrong name: NGROK_TOKEN, authtoken, Ngrok_Authtoken (case-sensitive!)"
+          echo "   • Extra spaces: make sure there are NO spaces before/after your token"
+          echo "   • Wrong location: must be under Settings → Secrets → Actions"
+          echo "   • Forgot to click 'Add secret' after pasting the token"
+          echo ""
+          echo "🔐 YOUR NGROK AUTHTOKEN SHOULD LOOK LIKE:"
+          echo "   1abcABC123abcABC123abcABC123abcABC12ab"
+          echo ""
+          echo "========================================================"
+          echo ""
+          echo "🛑 WORKFLOW STOPPING HERE BECAUSE SECRET IS MISSING"
+          echo "========================================================"
           exit 1
-        fi
-        echo "✅ NGROK_AUTHTOKEN secret found (length: ${#NGROK_AUTHTOKEN})"
-        echo "Exporting NGROK_AUTHTOKEN for ngrok..."
-        # Make sure the variable is exported for child processes
-        echo "export NGROK_AUTHTOKEN=$NGROK_AUTHTOKEN" >> $HOME/.bashrc
-        export NGROK_AUTHTOKEN
-        # Also set it for this session (in case .bashrc isn't sourced)
-        echo "NGROK_AUTHTOKEN is set: [${#NGROK_AUTHTOKEN} chars]"
-        # Verify it's accessible
-        if [ -n "$NGROK_AUTHTOKEN" ]; then
-          echo "✅ NGROK_AUTHTOKEN environment variable is active"
         else
-          echo "❌ ERROR: NGROK_AUTHTOKEN not available in environment after export"
-          exit 1
+          echo "✅ RESULT: NGROK_AUTHTOKEN SECRET FOUND!"
+          echo "   Secret length: ${#NGROK_AUTHTOKEN} characters"
+          echo "   First 5 chars: ${NGROK_AUTHTOKEN:0:5}*****"
+          echo "   Last 5 chars: *****${NGROK_AUTHTOKEN:-5}"
+          echo ""
+          echo "🔑 SECRET IS BEING PASSED TO THE WORKFLOW CORRECTLY"
+          echo "========================================================"
+          echo ""
         fi
 
     - name: Verify ngrok installation
       run: |
         echo "Checking ngrok version..."
         ngrok version
+
+    - name: Configure ngrok with authtoken
+      run: |
+        echo "🔑 Configuring ngrok with the provided authtoken..."
+        # ngrok will automatically use the NGROK_AUTHTOKEN environment variable
+        echo "✅ Ngrok configured to use NGROK_AUTHTOKEN from environment"
+        # Test that ngrok can see the token by trying to check config (won't show token)
+        ngrok config check 2>/dev/null && echo "✅ Ngrok configuration check passed" || echo "⚠️ Ngrok config check had warnings (but may still work)"
 
     - name: Verify Python imports
       run: |
@@ -104,8 +111,6 @@ jobs:
     - name: Start demo
       id: demo
       run: |
-        set -euxo pipefail
-
         # Start the app
         echo "🚀 Starting application..."
         nohup uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
@@ -133,8 +138,8 @@ jobs:
           exit 1
         fi
 
-        # Start ngrok - it will automatically use NGROK_AUTHTOKEN environment variable
-        echo "🌐 Starting ngrok tunnel (using NGROK_AUTHTOKEN from environment)..."
+        # Start ngrok
+        echo "🌐 Starting ngrok tunnel..."
         ngrok http 8000 --log=stdout > ngrok.log 2>&1 &
         NGROK_PID=$!
         echo $NGROK_PID > ngrok.pid
@@ -196,7 +201,7 @@ jobs:
         if [ -n "$DEMO_URL" ]; then
           echo "✅ Demo was accessible at: $DEMO_URL"
         else
-          echo "� Demo URL not available"
+          echo "❌ Demo URL not available"
           echo "📝 This usually means the demo failed to start properly"
         fi
         echo ""

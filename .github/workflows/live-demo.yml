@@ -18,15 +18,54 @@ jobs:
 
     - name: Install dependencies
       run: |
+        echo "Installing Python dependencies..."
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        echo "✅ Dependencies installed"
 
-    - name: Install ngrok and jq
+    - name: Install ngrok
       run: |
-        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc
+        echo "Installing ngrok..."
+        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
         echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
         sudo apt update
-        sudo apt install -y ngrok jq
+        sudo apt install -y ngrok
+        echo "✅ Ngrok installed"
+
+    - name: Verify ngrok installation
+      run: |
+        echo "Checking ngrok version..."
+        ngrok version
+
+    - name: Configure ngrok authtoken
+      run: |
+        echo "Checking for NGROK_AUTHTOKEN secret..."
+        if [ -z "$NGROK_AUTHTOKEN" ]; then
+          echo "❌ ERROR: NGROK_AUTHTOKEN secret not found!"
+          echo ""
+          echo "To fix this:"
+          echo "1. Get your authtoken from: https://dashboard.ngrok.com/get-started/your-authtoken"
+          echo "2. In your GitHub repo, go to Settings → Secrets and variables → Actions"
+          echo "3. Click 'New repository secret'"
+          echo "4. Name: NGROK_AUTHTOKEN"
+          echo "5. Value: [paste your authtoken]"
+          echo "6. Click 'Add secret'"
+          exit 1
+        fi
+        echo "✅ NGROK_AUTHTOKEN secret found (length: ${#NGROK_AUTHTOKEN})"
+        echo "Exporting NGROK_AUTHTOKEN for ngrok..."
+        # Make sure the variable is exported for child processes
+        echo "export NGROK_AUTHTOKEN=$NGROK_AUTHTOKEN" >> $HOME/.bashrc
+        export NGROK_AUTHTOKEN
+        # Also set it for this session (in case .bashrc isn't sourced)
+        echo "NGROK_AUTHTOKEN is set: [${#NGROK_AUTHTOKEN} chars]"
+        # Verify it's accessible
+        if [ -n "$NGROK_AUTHTOKEN" ]; then
+          echo "✅ NGROK_AUTHTOKEN environment variable is active"
+        else
+          echo "❌ ERROR: NGROK_AUTHTOKEN not available in environment"
+          exit 1
+        fi
 
     - name: Verify Python imports
       run: |
@@ -35,50 +74,77 @@ jobs:
         python -c "import tourism_graph; print('✅ tourism_graph module imported successfully')"
         python -c "from tourism_graph import build_tourism_graph; print('✅ build_tourism_graph imported successfully')"
         python -c "import fastapi; import uvicorn; print('✅ FastAPI and Uvicorn imported successfully')"
+        echo "✅ All imports successful"
 
     - name: Start demo
       id: demo
       run: |
+        set -euxo pipefail
+
         # Start the app
-        echo "Starting application..."
+        echo "🚀 Starting application..."
         nohup uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
-        echo $! > app.pid
+        APP_PID=$!
+        echo $APP_PID > app.pid
+        echo "📝 Application started with PID: $APP_PID"
 
         # Wait for app to start
-        echo "Waiting for app to start..."
+        echo "⏳ Waiting for application to start..."
+        APP_READY=false
         for i in {1..30}; do
-          if curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health | grep -q "200"; then
+          if curl -s http://localhost:8000/health >/dev/null 2>&1; then
             echo "✅ Application started successfully"
+            APP_READY=true
             break
           fi
           echo "⏳ Waiting for app... ($i/30)"
           sleep 2
         done
 
-        # Start ngrok
-        echo "Starting ngrok tunnel..."
+        if [ "$APP_READY" = false ]; then
+          echo "❌ ERROR: Application failed to start"
+          echo "📄 Application logs:"
+          cat app.log
+          exit 1
+        fi
+
+        # Start ngrok - it will automatically use NGROK_AUTHTOKEN environment variable
+        echo "🌐 Starting ngrok tunnel (using NGROK_AUTHTOKEN from environment)..."
         ngrok http 8000 --log=stdout > ngrok.log 2>&1 &
-        echo $! > ngrok.pid
+        NGROK_PID=$!
+        echo $NGROK_PID > ngrok.pid
+        echo "📝 Ngrok started with PID: $NGROK_PID"
 
         # Wait for ngrok
-        echo "Waiting for ngrok to start..."
+        echo "⏳ Waiting for ngrok to start..."
+        NGROK_READY=false
         for i in {1..30}; do
-          if curl -s -o /dev/null -w "%{http_code}" http://localhost:4040/api/tunnels | grep -q "200"; then
+          if curl -s http://localhost:4040/api/tunnels >/dev/null 2>&1; then
             echo "✅ Ngrok tunnel established"
+            NGROK_READY=true
             break
           fi
           echo "⏳ Waiting for ngrok... ($i/30)"
           sleep 2
         done
 
+        if [ "$NGROK_READY" = false ]; then
+          echo "❌ ERROR: Ngrok failed to start"
+          echo "📄 Ngrok logs:"
+          cat ngrok.log
+          exit 1
+        fi
+
         # Get public URL
-        echo "Getting public URL..."
+        echo "🔍 Getting public URL..."
         NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url' | head -1)
 
         if [ -z "$NGROK_URL" ] || [ "$NGROK_URL" = "null" ]; then
-          echo "❌ Failed to get ngrok URL"
-          echo "Ngrok log:"
+          echo "❌ ERROR: Failed to get ngrok URL"
+          echo "📄 Ngrok logs:"
           cat ngrok.log
+          echo "📡 Ngrok API response:"
+          curl -s http://localhost:4040/api/tunnels || echo "Failed to get response"
           exit 1
         fi
 
@@ -86,7 +152,12 @@ jobs:
         echo "demo_url=$NGROK_URL" >> $GITHUB_OUTPUT
 
         # Keep alive
-        echo "Demo is running. To stop, cancel this workflow."
+        echo ""
+        echo "🎯 Live demo is running!"
+        echo "🔗 Access your application at: $NGROK_URL"
+        echo "📝 To stop the demo, cancel this workflow run."
+        echo ""
+        echo "⏳ Keeping demo alive... (press Ctrl+C to stop)"
         while true; do
           sleep 300
         done
@@ -94,9 +165,13 @@ jobs:
     - name: Show demo info
       if: always()
       run: |
-        echo "Live demo finished or was stopped."
-        if [ -n "${{ steps.demo.outputs.demo_url }}" ]; then
-          echo "Demo was accessible at: ${{ steps.demo.outputs.demo_url }}"
+        echo ""
+        echo "📊 Live demo finished or was stopped."
+        DEMO_URL="${{ steps.demo.outputs.demo_url }}"
+        if [ -n "$DEMO_URL" ]; then
+          echo "✅ Demo was accessible at: $DEMO_URL"
         else
-          echo "Demo URL not available"
+          echo "❌ Demo URL not available"
+          echo "📝 This usually means the demo failed to start properly"
         fi
+        echo ""

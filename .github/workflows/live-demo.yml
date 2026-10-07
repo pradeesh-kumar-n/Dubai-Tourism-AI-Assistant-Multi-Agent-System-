@@ -3,205 +3,158 @@ name: Live Demo
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   demo:
     runs-on: ubuntu-24.04
+
+    env:
+      NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Install ngrok
-      run: |
-        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc
-        echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-        sudo apt update
-        sudo apt install -y ngrok
+      - name: Install ngrok
+        run: |
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
+            | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc
 
-    - name: CHECK NGROK SECRET - VERY IMPORTANT
-      run: |
-        echo "========================================================"
-        echo "🔍 CHECKING FOR NGROK_AUTHTOKEN SECRET"
-        echo "========================================================"
-        echo ""
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
+            | sudo tee /etc/apt/sources.list.d/ngrok.list
 
-        # Check if secret exists
-        if [ -z "$NGROK_AUTHTOKEN" ]; then
-          echo "❌ RESULT: NGROK_AUTHTOKEN SECRET IS MISSING OR EMPTY"
-          echo ""
-          echo "📋 TO FIX THIS, FOLLOW THESE EXACT STEPS:"
-          echo ""
-          echo "1. OPEN YOUR GITHUB REPOSITORY IN YOUR BROWSER"
-          echo "2. CLICK ON THE 'SETTINGS' TAB (TOP RIGHT)"
-          echo "3. IN THE LEFT MENU, CLICK: 'Secrets and variables' → 'Actions'"
-          echo "4. YOU SHOULD SEE A LIST OF SECRETS (OR A MESSAGE SAYING NO SECRETS)"
-          echo "5. CLICK THE GREEN BUTTON: 'New repository secret'"
-          echo ""
-          echo "6. ON THE SECRET CREATION PAGE:"
-          echo "   - NAME FIELD: TYPE EXACTLY → NGROK_AUTHTOKEN"
-          echo "   - VALUE FIELD: PASTE YOUR NGROK AUTHTOKEN HERE"
-          echo "     (GET IT FROM: https://dashboard.ngrok.com/get-started/your-authtoken)"
-          echo "   - IMPORTANT: NO SPACES BEFORE OR AFTER THE TOKEN!"
-          echo ""
-          echo "7. CLICK THE GREEN BUTTON: 'Add secret'"
-          echo ""
-          echo "8. AFTER ADDING, YOU SHOULD SEE:"
-          echo "   NGROK_AUTHTOKEN  ••••••••  (updated just now)"
-          echo ""
-          echo "9. RETURN TO THIS WORKFLOW RUN AND CLICK 'Re-run jobs' OR"
-          echo "   GO TO ACTIONS TAB AND CLICK 'Run workflow' AGAIN"
-          echo ""
-          echo "⚠️  COMMON MISTAKES TO AVOID:"
-          echo "   • Wrong name: NGROK_TOKEN, authtoken, Ngrok_Authtoken (case-sensitive!)"
-          echo "   • Extra spaces: make sure there are NO spaces before/after your token"
-          echo "   • Wrong location: must be under Settings → Secrets → Actions"
-          echo "   • Forgot to click 'Add secret' after pasting the token"
-          echo ""
-          echo "🔐 YOUR NGROK AUTHTOKEN SHOULD LOOK LIKE:"
-          echo "   1abcABC123abcABC123abcABC123abcABC12ab"
-          echo ""
-          echo "========================================================"
-          echo ""
-          echo "🛑 WORKFLOW STOPPING HERE BECAUSE SECRET IS MISSING"
-          echo "========================================================"
-          exit 1
-        else
-          echo "✅ RESULT: NGROK_AUTHTOKEN SECRET FOUND!"
-          echo "   Secret length: ${#NGROK_AUTHTOKEN} characters"
-          echo "   First 5 chars: ${NGROK_AUTHTOKEN:0:5}*****"
-          echo "   Last 5 chars: *****${NGROK_AUTHTOKEN:-5}"
-          echo ""
-          echo "🔑 SECRET IS BEING PASSED TO THE WORKFLOW CORRECTLY"
-          echo "========================================================"
-          echo ""
-        fi
+          sudo apt-get update
+          sudo apt-get install -y ngrok jq
 
-    - name: Verify ngrok installation
-      run: |
-        echo "Checking ngrok version..."
-        ngrok version
-
-    - name: Configure ngrok with authtoken
-      run: |
-        echo "🔑 Configuring ngrok with the provided authtoken..."
-        # ngrok will automatically use the NGROK_AUTHTOKEN environment variable
-        echo "✅ Ngrok configured to use NGROK_AUTHTOKEN from environment"
-        # Test that ngrok can see the token by trying to check config (won't show token)
-        ngrok config check 2>/dev/null && echo "✅ Ngrok configuration check passed" || echo "⚠️ Ngrok config check had warnings (but may still work)"
-
-    - name: Verify Python imports
-      run: |
-        echo "Verifying Python imports..."
-        python -c "import main; print('✅ main module imported successfully')"
-        python -c "import tourism_graph; print('✅ tourism_graph module imported successfully')"
-        python -c "from tourism_graph import build_tourism_graph; print('✅ build_tourism_graph imported successfully')"
-        python -c "import fastapi; import uvicorn; print('✅ FastAPI and Uvicorn imported successfully')"
-        echo "✅ All imports successful"
-
-    - name: Start demo
-      id: demo
-      run: |
-        # Start the app
-        echo "🚀 Starting application..."
-        nohup uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
-        APP_PID=$!
-        echo $APP_PID > app.pid
-        echo "📝 Application started with PID: $APP_PID"
-
-        # Wait for app to start
-        echo "⏳ Waiting for application to start..."
-        APP_READY=false
-        for i in {1..30}; do
-          if curl -s http://localhost:8000/health >/dev/null 2>&1; then
-            echo "✅ Application started successfully"
-            APP_READY=true
-            break
+      - name: Check NGROK_AUTHTOKEN
+        shell: bash
+        run: |
+          if [[ -z "${NGROK_AUTHTOKEN:-}" ]]; then
+            echo "NGROK_AUTHTOKEN is missing or empty."
+            exit 1
           fi
-          echo "⏳ Waiting for app... ($i/30)"
-          sleep 2
-        done
 
-        if [ "$APP_READY" = false ]; then
-          echo "❌ ERROR: Application failed to start"
-          echo "📄 Application logs:"
-          cat app.log
-          exit 1
-        fi
+          echo "NGROK_AUTHTOKEN was loaded successfully."
+          echo "Token length: ${#NGROK_AUTHTOKEN}"
 
-        # Start ngrok
-        echo "🌐 Starting ngrok tunnel..."
-        ngrok http 8000 --log=stdout > ngrok.log 2>&1 &
-        NGROK_PID=$!
-        echo $NGROK_PID > ngrok.pid
-        echo "📝 Ngrok started with PID: $NGROK_PID"
+      - name: Configure ngrok
+        shell: bash
+        run: |
+          ngrok config add-authtoken "$NGROK_AUTHTOKEN"
+          ngrok config check
 
-        # Wait for ngrok
-        echo "⏳ Waiting for ngrok to start..."
-        NGROK_READY=false
-        for i in {1..30}; do
-          if curl -s http://localhost:4040/api/tunnels >/dev/null 2>&1; then
-            echo "✅ Ngrok tunnel established"
-            NGROK_READY=true
-            break
+      - name: Verify Python imports
+        run: |
+          python -c "import main; print('main imported successfully')"
+          python -c "import tourism_graph; print('tourism_graph imported successfully')"
+          python -c "import fastapi; import uvicorn; print('FastAPI and Uvicorn imported successfully')"
+
+      - name: Start application and ngrok
+        id: demo
+        shell: bash
+        run: |
+          set -e
+
+          echo "Starting FastAPI application..."
+
+          nohup uvicorn main:app \
+            --host 0.0.0.0 \
+            --port 8000 \
+            > app.log 2>&1 &
+
+          APP_PID=$!
+          echo "$APP_PID" > app.pid
+
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8000/health > /dev/null; then
+              echo "Application started successfully."
+              break
+            fi
+
+            if [[ "$i" -eq 30 ]]; then
+              echo "Application failed to start."
+              cat app.log
+              exit 1
+            fi
+
+            sleep 2
+          done
+
+          echo "Starting ngrok tunnel..."
+
+          nohup ngrok http 8000 \
+            --log=stdout \
+            > ngrok.log 2>&1 &
+
+          NGROK_PID=$!
+          echo "$NGROK_PID" > ngrok.pid
+
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4040/api/tunnels > /dev/null; then
+              echo "Ngrok tunnel started successfully."
+              break
+            fi
+
+            if [[ "$i" -eq 30 ]]; then
+              echo "Ngrok failed to start."
+              cat ngrok.log
+              exit 1
+            fi
+
+            sleep 2
+          done
+
+          NGROK_URL=$(
+            curl -fsS http://127.0.0.1:4040/api/tunnels \
+            | jq -r '.tunnels[] | select(.proto == "https") | .public_url' \
+            | head -n 1
+          )
+
+          if [[ -z "$NGROK_URL" || "$NGROK_URL" == "null" ]]; then
+            echo "Could not find the ngrok public URL."
+            cat ngrok.log
+            curl -fsS http://127.0.0.1:4040/api/tunnels || true
+            exit 1
           fi
-          echo "⏳ Waiting for ngrok... ($i/30)"
-          sleep 2
-        done
 
-        if [ "$NGROK_READY" = false ]; then
-          echo "❌ ERROR: Ngrok failed to start"
-          echo "📄 Ngrok logs:"
-          cat ngrok.log
-          exit 1
-        fi
+          echo "Demo URL: $NGROK_URL"
+          echo "demo_url=$NGROK_URL" >> "$GITHUB_OUTPUT"
 
-        # Get public URL
-        echo "🔍 Getting public URL..."
-        NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url' | head -1)
+          echo "The demo is now running."
+          echo "Cancel this workflow when you want to stop it."
 
-        if [ -z "$NGROK_URL" ] || [ "$NGROK_URL" = "null" ]; then
-          echo "❌ ERROR: Failed to get ngrok URL"
-          echo "📄 Ngrok logs:"
-          cat ngrok.log
-          echo "📡 Ngrok API response:"
-          curl -s http://localhost:4040/api/tunnels || echo "Failed to get response"
-          exit 1
-        fi
+          while true; do
+            sleep 300
+          done
 
-        echo "🎉 Demo URL: $NGROK_URL"
-        echo "demo_url=$NGROK_URL" >> $GITHUB_OUTPUT
+      - name: Show demo information
+        if: always()
+        shell: bash
+        run: |
+          echo "Workflow finished."
 
-        # Keep alive
-        echo ""
-        echo "🎯 Live demo is running!"
-        echo "🔗 Access your application at: $NGROK_URL"
-        echo "📝 To stop the demo, cancel this workflow run."
-        echo ""
-        echo "⏳ Keeping demo alive... (press Ctrl+C to stop)"
-        while true; do
-          sleep 300
-        done
+          if [[ -n "${{ steps.demo.outputs.demo_url }}" ]]; then
+            echo "Demo URL: ${{ steps.demo.outputs.demo_url }}"
+          else
+            echo "Demo URL was not created."
+          fi
 
-    - name: Show demo info
-      if: always()
-      run: |
-        echo ""
-        echo "📊 Live demo finished or was stopped."
-        DEMO_URL="${{ steps.demo.outputs.demo_url }}"
-        if [ -n "$DEMO_URL" ]; then
-          echo "✅ Demo was accessible at: $DEMO_URL"
-        else
-          echo "❌ Demo URL not available"
-          echo "📝 This usually means the demo failed to start properly"
-        fi
-        echo ""
+          echo ""
+          echo "Application log:"
+          cat app.log 2>/dev/null || true
+
+          echo ""
+          echo "Ngrok log:"
+          cat ngrok.log 2>/dev/null || true

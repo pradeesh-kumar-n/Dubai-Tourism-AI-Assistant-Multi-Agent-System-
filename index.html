@@ -116,20 +116,41 @@
     </div>
   </main>
 
-  <script>
-    function ask() {
-      const question = document.getElementById("query").value.trim();
-      const response = document.getElementById("response");
+<script>
+// 🔧 PASTE YOUR DEPLOYED BACKEND URL HERE
+const API_URL = "https://dubai-tourism-ai-assistant-multi-agent.onrender.com"; 
+// If you use Railway, replace with: "https://your-app.railway.app"
 
-      if (!question) {
-        response.textContent = "Please enter a Dubai travel question.";
-        return;
-      }
+async function ask() {
+  const question = document.getElementById("query").value.trim();
+  const responseEl = document.getElementById("response");
 
-      response.textContent =
-        "Demo mode is working. Your GitHub Pages website is live. " +
-        "To receive real AI answers, deploy your Python/LangGraph backend to Render or Railway and connect its API URL here.";
+  if (!question) {
+    responseEl.textContent = "Please enter a Dubai travel question.";
+    return;
+  }
+
+  // Show loading state
+  responseEl.textContent = "Thinking...";
+
+  try {
+    const res = await fetch(API_URL + "/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: question })
+    });
+
+    if (!res.ok) {
+      throw new Error("Backend returned " + res.status);
     }
-  </script>
+
+    const data = await res.json();
+    // Adjust this depending on your backend response shape
+    responseEl.textContent = data.answer || data.response || JSON.stringify(data);
+  } catch (err) {
+    responseEl.textContent = "Error: " + err.message + " (Check that API_URL is correct and backend is running.)";
+  }
+}
+</script>
 </body>
 </html>

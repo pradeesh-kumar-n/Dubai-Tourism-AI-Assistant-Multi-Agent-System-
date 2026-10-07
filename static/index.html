@@ -1,0 +1,103 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Dubai Tourism AI</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            max-width: 700px; 
+            margin: 60px auto; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .card {
+            background: rgb(155, 30, 103);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(211, 111, 111, 0.3);
+        }
+        h1 { color: #333333; margin-bottom: 8px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        input { 
+            width: 100%; 
+            padding: 14px; 
+            font-size: 16px; 
+            margin-bottom: 12px; 
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        input:focus { outline: none; border-color: #667eea; }
+        button { 
+            padding: 14px 32px; 
+            background: #667eea; 
+            color: white; 
+            border: none; 
+            border-radius: 8px;
+            cursor: pointer; 
+            font-size: 16px;
+            font-weight: 600;
+        }
+        button:hover { background: #5a67d8; }
+        #response { 
+            margin-top: 24px; 
+            padding: 20px; 
+            background: #f8f9fa; 
+            border-radius: 12px; 
+            min-height: 60px;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-line;
+        }
+        .thinking { color: #667eea; font-style: italic; }
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="badge">🤖 AI-Powered</div>
+        <h1>🌴 Dubai Tourism AI Assistant</h1>
+        <p class="subtitle">Ask me about attractions, restaurants, or travel tips!</p>
+        
+        <input type="text" id="query" placeholder="What are the best beaches in Dubai?" 
+               onkeypress="if(event.key==='Enter')ask()">
+        <button onclick="ask()">Ask</button>
+        
+        <div id="response"></div>
+    </div>
+
+    <script>
+        async function ask() {
+            const query = document.getElementById('query').value.trim();
+            if (!query) return;
+            
+            const responseDiv = document.getElementById('response');
+            responseDiv.innerHTML = '<span class=\"thinking\">🧠 Thinking...</span>';
+            
+            try {
+                const res = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+                
+                if (!res.ok) throw new Error('Server error: ' + res.status);
+                const data = await res.json();
+                
+                responseDiv.innerHTML = '<strong>Intent:</strong> <span style=\"color:#667eea\">' + data.intent + '</span><br><br><strong>Response:</strong><br>' + data.response;
+            } catch (err) {
+                responseDiv.innerHTML = '<span style=\"color:red;\">❌ Error: ' + err.message + '</span>';
+            }
+        }
+    </script>
+</body>
+</html>

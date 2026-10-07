@@ -1,0 +1,22 @@
+name: Test ngrok secret
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-secret:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check NGROK_AUTHTOKEN
+        shell: bash
+        env:
+          NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+        run: |
+          if [[ -z "${NGROK_AUTHTOKEN:-}" ]]; then
+            echo "NGROK_AUTHTOKEN is missing or empty."
+            exit 1
+          fi
+
+          echo "NGROK_AUTHTOKEN was loaded successfully."
+          echo "Token length: ${#NGROK_AUTHTOKEN}"

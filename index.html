@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dubai Tourism AI Assistant</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #071a2d, #075985);
+      color: #ffffff;
+    }
+
+    .card {
+      width: min(680px, 100%);
+      padding: 36px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.10);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.30);
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 183, 3, 0.20);
+      color: #ffe29a;
+      font-size: 14px;
+    }
+
+    h1 {
+      margin: 20px 0 12px;
+      font-size: clamp(30px, 5vw, 48px);
+      color: #ffd166;
+    }
+
+    .subtitle {
+      margin: 0 0 24px;
+      color: #e1f3ff;
+      line-height: 1.6;
+    }
+
+    input,
+    button {
+      width: 100%;
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    input {
+      border: 0;
+      outline: none;
+      color: #1f2937;
+    }
+
+    button {
+      margin-top: 12px;
+      border: 0;
+      background: #ffb703;
+      color: #14213d;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #ffd166;
+    }
+
+    #response {
+      min-height: 48px;
+      margin-top: 22px;
+      padding: 14px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.16);
+      color: #fff3c4;
+      line-height: 1.6;
+      text-align: left;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="card">
+    <div class="badge">🤖 AI-Powered Tourism Guide</div>
+
+    <h1>🌴 Dubai Tourism AI Assistant</h1>
+
+    <p class="subtitle">
+      Ask about Dubai attractions, restaurants, beaches, travel tips, and places to visit.
+    </p>
+
+    <input
+      type="text"
+      id="query"
+      placeholder="Example: What are the best beaches in Dubai?"
+      onkeypress="if (event.key === 'Enter') ask()"
+    >
+
+    <button onclick="ask()">Ask Assistant</button>
+
+    <div id="response">
+      Enter a question to test the GitHub Pages interface.
+    </div>
+  </main>
+
+  <script>
+    function ask() {
+      const question = document.getElementById("query").value.trim();
+      const response = document.getElementById("response");
+
+      if (!question) {
+        response.textContent = "Please enter a Dubai travel question.";
+        return;
+      }
+
+      response.textContent =
+        "Demo mode is working. Your GitHub Pages website is live. " +
+        "To receive real AI answers, deploy your Python/LangGraph backend to Render or Railway and connect its API URL here.";
+    }
+  </script>
+</body>
+</html>

@@ -117,9 +117,8 @@
   </main>
 
 <script>
-// 🔧 PASTE YOUR DEPLOYED BACKEND URL HERE
-const API_URL = "https://dubai-tourism-ai-assistant-multi-agent.onrender.com"; 
-// If you use Railway, replace with: "https://your-app.railway.app"
+// 🔧 Your deployed backend URL (no trailing slash)
+const API_URL = "[https://dubai-tourism-ai-assistant-multi-agent.onrender.com](https://dubai-tourism-ai-assistant-multi-agent.onrender.com)";
 
 async function ask() {
   const question = document.getElementById("query").value.trim();
@@ -130,10 +129,10 @@ async function ask() {
     return;
   }
 
-  // Show loading state
   responseEl.textContent = "Thinking...";
 
   try {
+    // Call your Render backend
     const res = await fetch(API_URL + "/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -141,14 +140,14 @@ async function ask() {
     });
 
     if (!res.ok) {
-      throw new Error("Backend returned " + res.status);
+      throw new Error("Backend returned status " + res.status);
     }
 
     const data = await res.json();
-    // Adjust this depending on your backend response shape
-    responseEl.textContent = data.answer || data.response || JSON.stringify(data);
+    // Adjust field name if needed: data.answer / data.response / data.message
+    responseEl.textContent = data.answer || data.response || data.message || JSON.stringify(data);
   } catch (err) {
-    responseEl.textContent = "Error: " + err.message + " (Check that API_URL is correct and backend is running.)";
+    responseEl.textContent = "Error: " + err.message + " (Check /ask endpoint and that backend is running.)";
   }
 }
 </script>

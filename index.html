@@ -76,28 +76,43 @@
     </div>
 
     <script>
-        async function ask() {
-            const query = document.getElementById('query').value.trim();
-            if (!query) return;
-            
-            const responseDiv = document.getElementById('response');
-            responseDiv.innerHTML = '<span class=\"thinking\">🧠 Thinking...</span>';
-            
-            try {
-                const res = await fetch('/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: query })
-                });
-                
-                if (!res.ok) throw new Error('Server error: ' + res.status);
-                const data = await res.json();
-                
-                responseDiv.innerHTML = '<strong>Intent:</strong> <span style=\"color:#667eea\">' + data.intent + '</span><br><br><strong>Response:</strong><br>' + data.response;
-            } catch (err) {
-                responseDiv.innerHTML = '<span style=\"color:red;\">❌ Error: ' + err.message + '</span>';
-            }
+  async function askAssistant() {
+    const question = document.getElementById("question").value.trim();
+    const response = document.getElementById("response");
+
+    if (!question) {
+      response.textContent = "Please enter a Dubai travel question.";
+      return;
+    }
+
+    response.textContent = "Thinking...";
+
+    try {
+      const result = await fetch(
+        "https://YOUR-RENDER-URL.onrender.com/chat",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: question
+          })
         }
-    </script>
+      );
+
+      if (!result.ok) {
+        throw new Error(`Server returned ${result.status}`);
+      }
+
+      const data = await result.json();
+      response.textContent = data.response;
+    } catch (error) {
+      response.textContent =
+        "The AI server is unavailable. Check the Render deployment URL and try again.";
+      console.error(error);
+    }
+  }
+</script>
 </body>
 </html>

@@ -1,45 +1,17 @@
-name: Live Demo
+name: Test ngrok secret
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
-  demo:
-    runs-on: ubuntu-24.04
-
-    env:
-      NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+  test-secret:
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Install ngrok
-        run: |
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
-            | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc
-
-          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
-            | sudo tee /etc/apt/sources.list.d/ngrok.list
-
-          sudo apt-get update
-          sudo apt-get install -y ngrok jq
-
       - name: Check NGROK_AUTHTOKEN
         shell: bash
+        env:
+          NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
         run: |
           if [[ -z "${NGROK_AUTHTOKEN:-}" ]]; then
             echo "NGROK_AUTHTOKEN is missing or empty."
@@ -48,113 +20,3 @@ jobs:
 
           echo "NGROK_AUTHTOKEN was loaded successfully."
           echo "Token length: ${#NGROK_AUTHTOKEN}"
-
-      - name: Configure ngrok
-        shell: bash
-        run: |
-          ngrok config add-authtoken "$NGROK_AUTHTOKEN"
-          ngrok config check
-
-      - name: Verify Python imports
-        run: |
-          python -c "import main; print('main imported successfully')"
-          python -c "import tourism_graph; print('tourism_graph imported successfully')"
-          python -c "import fastapi; import uvicorn; print('FastAPI and Uvicorn imported successfully')"
-
-      - name: Start application and ngrok
-        id: demo
-        shell: bash
-        run: |
-          set -e
-
-          echo "Starting FastAPI application..."
-
-          nohup uvicorn main:app \
-            --host 0.0.0.0 \
-            --port 8000 \
-            > app.log 2>&1 &
-
-          APP_PID=$!
-          echo "$APP_PID" > app.pid
-
-          for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:8000/health > /dev/null; then
-              echo "Application started successfully."
-              break
-            fi
-
-            if [[ "$i" -eq 30 ]]; then
-              echo "Application failed to start."
-              cat app.log
-              exit 1
-            fi
-
-            sleep 2
-          done
-
-          echo "Starting ngrok tunnel..."
-
-          nohup ngrok http 8000 \
-            --log=stdout \
-            > ngrok.log 2>&1 &
-
-          NGROK_PID=$!
-          echo "$NGROK_PID" > ngrok.pid
-
-          for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:4040/api/tunnels > /dev/null; then
-              echo "Ngrok tunnel started successfully."
-              break
-            fi
-
-            if [[ "$i" -eq 30 ]]; then
-              echo "Ngrok failed to start."
-              cat ngrok.log
-              exit 1
-            fi
-
-            sleep 2
-          done
-
-          NGROK_URL=$(
-            curl -fsS http://127.0.0.1:4040/api/tunnels \
-            | jq -r '.tunnels[] | select(.proto == "https") | .public_url' \
-            | head -n 1
-          )
-
-          if [[ -z "$NGROK_URL" || "$NGROK_URL" == "null" ]]; then
-            echo "Could not find the ngrok public URL."
-            cat ngrok.log
-            curl -fsS http://127.0.0.1:4040/api/tunnels || true
-            exit 1
-          fi
-
-          echo "Demo URL: $NGROK_URL"
-          echo "demo_url=$NGROK_URL" >> "$GITHUB_OUTPUT"
-
-          echo "The demo is now running."
-          echo "Cancel this workflow when you want to stop it."
-
-          while true; do
-            sleep 300
-          done
-
-      - name: Show demo information
-        if: always()
-        shell: bash
-        run: |
-          echo "Workflow finished."
-
-          if [[ -n "${{ steps.demo.outputs.demo_url }}" ]]; then
-            echo "Demo URL: ${{ steps.demo.outputs.demo_url }}"
-          else
-            echo "Demo URL was not created."
-          fi
-
-          echo ""
-          echo "Application log:"
-          cat app.log 2>/dev/null || true
-
-          echo ""
-          echo "Ngrok log:"
-          cat ngrok.log 2>/dev/null || true

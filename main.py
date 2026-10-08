@@ -14,7 +14,21 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     intent: str
     response: str
+from fastapi.middleware.cors import CORSMiddleware
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8000",
+        "http://localhost:3000",
+        "https://pradeesh-kumar-n.github.io",
+        "https://dubai-tourism-api.onrender.com",
+        "*"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 @app.get("/health")
 def health_check():
     """Health check endpoint — Render uses this to verify the app is alive."""

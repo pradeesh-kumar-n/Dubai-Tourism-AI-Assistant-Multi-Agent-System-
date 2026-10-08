@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <title>Dubai Tourism AI</title>
@@ -60,6 +60,14 @@
             font-size: 12px;
             margin-bottom: 10px;
         }
+        .backend-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 6px;
+        }
     </style>
 </head>
 <body>
@@ -73,29 +81,39 @@
         <button onclick="ask()">Ask</button>
         
         <div id="response"></div>
+        <div class="backend-info">
+            Backend: <strong id="backendUrl">https://turbo-funicular-q7gj7g7wxvr5h6695.github.dev</strong>
+            <br><small>Make sure backend is running with: <code>python -m uvicorn main:app --host 0.0.0.0 --port 8000</code></small>
+        </div>
     </div>
 
     <script>
+        const BACKEND_URL = 'https://turbo-funicular-q7gj7g7wxvr5h6695.github.dev';
+
         async function ask() {
             const query = document.getElementById('query').value.trim();
             if (!query) return;
             
             const responseDiv = document.getElementById('response');
-            responseDiv.innerHTML = '<span class=\"thinking\">🧠 Thinking...</span>';
+            responseDiv.innerHTML = '<span class="thinking">🧠 Thinking...</span>';
             
             try {
-                const res = await fetch('chat', {
+                console.log('Sending request to:', BACKEND_URL + '/chat');
+                
+                const res = await fetch(`${BACKEND_URL}/chat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: query })
+                    body: JSON.stringify({ query: query }),
+                    mode: 'cors'
                 });
                 
-                if (!res.ok) throw new Error('Server error: ' + res.status);
+                if (!res.ok) throw new Error('Server error: ' + res.status + ' ' + res.statusText);
                 const data = await res.json();
                 
-                responseDiv.innerHTML = '<strong>Intent:</strong> <span style=\"color:#667eea\">' + data.intent + '</span><br><br><strong>Response:</strong><br>' + data.response;
+                responseDiv.innerHTML = '<strong>Intent:</strong> <span style="color:#667eea">' + data.intent + '</span><br><br><strong>Response:</strong><br>' + data.response;
             } catch (err) {
-                responseDiv.innerHTML = '<span style=\"color:red;\">❌ Error: ' + err.message + '</span>';
+                console.error('Error:', err);
+                responseDiv.innerHTML = '<span style="color:red;">❌ Error: ' + err.message + '</span><br><small>Backend may not be running. Start it in Codespace terminal with:<br><code>python -m uvicorn main:app --host 0.0.0.0 --port 8000</code></small>';
             }
         }
     </script>

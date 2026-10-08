@@ -143,8 +143,12 @@ const getBackendUrl = () => {
   return 'https://dubai-tourism-api.onrender.com';
 };
 
-const API_URL = getBackendUrl();
-
+const API_URL = window.location.origin;
+fetch("/chat", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ query: question })
+});
 const updateStatus = (message) => {
   document.getElementById('status').textContent = message;
 };

@@ -89,6 +89,15 @@
       line-height: 1.6;
       text-align: left;
     }
+
+    .status {
+      font-size: 12px;
+      color: #ffd166;
+      margin-top: 10px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+    }
   </style>
 </head>
 
@@ -114,11 +123,31 @@
     <div id="response">
       Enter a question to test the Dubai Tourism AI Assistant.
     </div>
+    <div class="status" id="status"></div>
   </main>
 
 <script>
-// Backend API endpoint (use relative URL for Codespaces)
-const API_URL = window.location.origin;
+// Get backend URL from environment or use Render deployment
+const getBackendUrl = () => {
+  // Check if deployed on GitHub Pages with environment variable
+  const renderBackend = document.currentScript?.getAttribute('data-backend');
+  if (renderBackend) return renderBackend;
+  
+  // Check if running locally
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:8000';
+  }
+  
+  // For GitHub Pages deployment, use Render backend
+  // Replace YOUR-RENDER-URL with your actual Render deployment URL
+  return 'https://dubai-tourism-api.onrender.com';
+};
+
+const API_URL = getBackendUrl();
+
+const updateStatus = (message) => {
+  document.getElementById('status').textContent = message;
+};
 
 async function ask() {
   const question = document.getElementById("query").value.trim();
@@ -130,26 +159,33 @@ async function ask() {
   }
 
   responseEl.textContent = "🧠 Thinking...";
+  updateStatus("🔄 Calling backend...");
 
   try {
-    // Call the /chat endpoint (not /ask)
+    console.log('Calling API at:', API_URL + "/chat");
+    
     const res = await fetch(API_URL + "/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query: question })
+      body: JSON.stringify({ query: question }),
+      mode: 'cors'
     });
 
     if (!res.ok) {
-      throw new Error("Backend returned status " + res.status);
+      throw new Error(`Backend returned status ${res.status} (${res.statusText})`);
     }
 
     const data = await res.json();
-    // Backend returns {intent, response}
+    updateStatus("✅ Connected to backend");
+    
     responseEl.innerHTML = 
       `<strong>Intent:</strong> <span style="color:#ffd166">${data.intent}</span><br><br>` +
       `<strong>Response:</strong><br>${data.response}`;
   } catch (err) {
-    responseEl.textContent = "❌ Error: " + err.message + " (Make sure backend is running on port 8000)";
+    updateStatus("❌ Backend connection failed");
+    responseEl.innerHTML = `<strong>Error:</strong> ${err.message}<br><br>
+      <small>Make sure the backend is running. Currently trying: ${API_URL}</small>`;
+    console.error('Full error:', err);
   }
 }
 </script>

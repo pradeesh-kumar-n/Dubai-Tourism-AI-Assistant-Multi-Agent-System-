@@ -143,10 +143,14 @@ const getBackendUrl = () => {
   return 'https://dubai-tourism-api.onrender.com';
 };
 
-const API_URL = window.location.origin;
-fetch("/chat", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
+const API_URL =
+  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8000'
+    : 'https://dubai-tourism-api.onrender.com';
+
+const res = await fetch(`${API_URL}/chat`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ query: question })
 });
 const updateStatus = (message) => {

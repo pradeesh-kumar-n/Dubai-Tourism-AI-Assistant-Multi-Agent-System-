@@ -82,13 +82,12 @@
         
         <div id="response"></div>
         <div class="backend-info">
-            Backend: <strong id="backendUrl">https://turbo-funicular-q7gj7g7wxvr5h6695.github.dev</strong>
-            <br><small>Make sure backend is running with: <code>python -m uvicorn main:app --host 0.0.0.0 --port 8000</code></small>
+            Backend: <strong id="backendUrl">https://web-production-a91915.up.railway.app</strong>
         </div>
     </div>
 
     <script>
-        const BACKEND_URL = 'https://turbo-funicular-q7gj7g7wxvr5h6695.github.dev';
+        const BACKEND_URL = 'https://web-production-a91915.up.railway.app';
 
         async function ask() {
             const query = document.getElementById('query').value.trim();
@@ -98,8 +97,6 @@
             responseDiv.innerHTML = '<span class="thinking">🧠 Thinking...</span>';
             
             try {
-                console.log('Sending request to:', BACKEND_URL + '/chat');
-                
                 const res = await fetch(`${BACKEND_URL}/chat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -113,7 +110,7 @@
                 responseDiv.innerHTML = '<strong>Intent:</strong> <span style="color:#667eea">' + data.intent + '</span><br><br><strong>Response:</strong><br>' + data.response;
             } catch (err) {
                 console.error('Error:', err);
-                responseDiv.innerHTML = '<span style="color:red;">❌ Error: ' + err.message + '</span><br><small>Backend may not be running. Start it in Codespace terminal with:<br><code>python -m uvicorn main:app --host 0.0.0.0 --port 8000</code></small>';
+                responseDiv.innerHTML = '<span style="color:red;">❌ Error: ' + err.message + '</span><br><small>Check Railway deployment logs.</small>';
             }
         }
     </script>

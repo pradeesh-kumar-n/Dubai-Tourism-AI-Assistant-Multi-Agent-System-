@@ -1,12 +1,6 @@
-
-scikit-learn
-pytest
 fastapi
 uvicorn
 langgraph
-langchain
-langchain-openai
-chromadb
-sentence-transformers
-python-dotenv
+scikit-learn
 pydantic
+pytest
